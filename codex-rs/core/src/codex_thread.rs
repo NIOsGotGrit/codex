@@ -1,6 +1,7 @@
 use crate::agent::AgentStatus;
 use crate::codex::Codex;
 use crate::codex::SteerInputError;
+use crate::config::types::CollabInboxDeliveryRole;
 use crate::error::Result as CodexResult;
 use crate::features::Feature;
 use crate::file_watcher::WatchRegistration;
@@ -29,6 +30,7 @@ pub struct ThreadConfigSnapshot {
     pub reasoning_effort: Option<ReasoningEffort>,
     pub personality: Option<Personality>,
     pub session_source: SessionSource,
+    pub collab_inbox_delivery_role: CollabInboxDeliveryRole,
 }
 
 pub struct CodexThread {
@@ -85,12 +87,24 @@ impl CodexThread {
         self.codex.session.total_token_usage().await
     }
 
+    pub(crate) async fn has_active_turn(&self) -> bool {
+        self.codex.has_active_turn().await
+    }
+
+    pub(crate) fn last_completed_turn_used_collab_send_input(&self) -> bool {
+        self.codex.last_completed_turn_used_collab_send_input()
+    }
+
     pub fn rollout_path(&self) -> Option<PathBuf> {
         self.rollout_path.clone()
     }
 
     pub fn state_db(&self) -> Option<StateDbHandle> {
         self.codex.state_db()
+    }
+
+    pub(crate) async fn flush_rollout(&self) {
+        self.codex.session.flush_rollout().await;
     }
 
     pub async fn config_snapshot(&self) -> ThreadConfigSnapshot {

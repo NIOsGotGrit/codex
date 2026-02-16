@@ -29,6 +29,14 @@
         "$ref": "#/definitions/AgentRoleToml"
       },
       "properties": {
+        "inbox_delivery_role": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/CollabInboxDeliveryRole"
+            }
+          ],
+          "description": "How inbound collaboration messages are delivered to non-subagent threads."
+        },
         "max_threads": {
           "description": "Maximum number of agent threads that can be open concurrently. When unset, no limit is enforced.",
           "format": "uint",
@@ -174,6 +182,14 @@
           "type": "string"
         }
       ]
+    },
+    "CollabInboxDeliveryRole": {
+      "enum": [
+        "developer",
+        "tool",
+        "assistant"
+      ],
+      "type": "string"
     },
     "ConfigProfile": {
       "additionalProperties": false,

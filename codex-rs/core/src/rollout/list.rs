@@ -1049,6 +1049,9 @@ async fn read_head_summary(path: &Path, head_limit: usize) -> io::Result<HeadTai
             RolloutItem::Compacted(_) => {
                 // Not included in `head`; skip.
             }
+            RolloutItem::ForkReference(_) => {
+                // Not included in `head`; skip.
+            }
             RolloutItem::EventMsg(ev) => {
                 if let EventMsg::UserMessage(user) = ev {
                     summary.saw_user_event = true;
@@ -1100,6 +1103,7 @@ pub async fn read_head_for_summary(path: &Path) -> io::Result<Vec<serde_json::Va
                         head.push(value);
                     }
                 }
+                RolloutItem::ForkReference(_) => {}
                 RolloutItem::Compacted(_)
                 | RolloutItem::TurnContext(_)
                 | RolloutItem::EventMsg(_) => {}

@@ -15,9 +15,9 @@ use ratatui::text::Line;
 use ratatui::text::Span;
 use std::collections::HashMap;
 
-const COLLAB_PROMPT_PREVIEW_GRAPHEMES: usize = 160;
-const COLLAB_AGENT_ERROR_PREVIEW_GRAPHEMES: usize = 160;
-const COLLAB_AGENT_RESPONSE_PREVIEW_GRAPHEMES: usize = 240;
+const MULTI_AGENT_PROMPT_PREVIEW_GRAPHEMES: usize = 160;
+const MULTI_AGENT_ERROR_PREVIEW_GRAPHEMES: usize = 160;
+const MULTI_AGENT_RESPONSE_PREVIEW_GRAPHEMES: usize = 240;
 
 pub(crate) fn spawn_end(ev: CollabAgentSpawnEndEvent) -> PlainHistoryCell {
     let CollabAgentSpawnEndEvent {
@@ -26,6 +26,7 @@ pub(crate) fn spawn_end(ev: CollabAgentSpawnEndEvent) -> PlainHistoryCell {
         new_thread_id,
         prompt,
         status,
+        ..
     } = ev;
     let new_agent = new_thread_id
         .map(|id| Span::from(id.to_string()))
@@ -38,7 +39,7 @@ pub(crate) fn spawn_end(ev: CollabAgentSpawnEndEvent) -> PlainHistoryCell {
     if let Some(line) = prompt_line(&prompt) {
         details.push(line);
     }
-    collab_event("Agent spawned", details)
+    multi_agent_event("Agent spawned", details)
 }
 
 pub(crate) fn interaction_end(ev: CollabAgentInteractionEndEvent) -> PlainHistoryCell {
@@ -57,7 +58,7 @@ pub(crate) fn interaction_end(ev: CollabAgentInteractionEndEvent) -> PlainHistor
     if let Some(line) = prompt_line(&prompt) {
         details.push(line);
     }
-    collab_event("Input sent", details)
+    multi_agent_event("Input sent", details)
 }
 
 pub(crate) fn waiting_begin(ev: CollabWaitingBeginEvent) -> PlainHistoryCell {
@@ -70,7 +71,7 @@ pub(crate) fn waiting_begin(ev: CollabWaitingBeginEvent) -> PlainHistoryCell {
         detail_line("call", call_id),
         detail_line("receivers", format_thread_ids(&receiver_thread_ids)),
     ];
-    collab_event("Waiting for agents", details)
+    multi_agent_event("Waiting for agents", details)
 }
 
 pub(crate) fn waiting_end(ev: CollabWaitingEndEvent) -> PlainHistoryCell {
@@ -81,7 +82,7 @@ pub(crate) fn waiting_end(ev: CollabWaitingEndEvent) -> PlainHistoryCell {
     } = ev;
     let mut details = vec![detail_line("call", call_id)];
     details.extend(wait_complete_lines(&statuses));
-    collab_event("Wait complete", details)
+    multi_agent_event("Wait complete", details)
 }
 
 pub(crate) fn close_end(ev: CollabCloseEndEvent) -> PlainHistoryCell {
@@ -96,7 +97,7 @@ pub(crate) fn close_end(ev: CollabCloseEndEvent) -> PlainHistoryCell {
         detail_line("receiver", receiver_thread_id.to_string()),
         status_line(&status),
     ];
-    collab_event("Agent closed", details)
+    multi_agent_event("Agent closed", details)
 }
 
 pub(crate) fn resume_begin(ev: CollabResumeBeginEvent) -> PlainHistoryCell {
@@ -109,7 +110,7 @@ pub(crate) fn resume_begin(ev: CollabResumeBeginEvent) -> PlainHistoryCell {
         detail_line("call", call_id),
         detail_line("receiver", receiver_thread_id.to_string()),
     ];
-    collab_event("Resuming agent", details)
+    multi_agent_event("Resuming agent", details)
 }
 
 pub(crate) fn resume_end(ev: CollabResumeEndEvent) -> PlainHistoryCell {
@@ -124,10 +125,10 @@ pub(crate) fn resume_end(ev: CollabResumeEndEvent) -> PlainHistoryCell {
         detail_line("receiver", receiver_thread_id.to_string()),
         status_line(&status),
     ];
-    collab_event("Agent resumed", details)
+    multi_agent_event("Agent resumed", details)
 }
 
-fn collab_event(title: impl Into<String>, details: Vec<Line<'static>>) -> PlainHistoryCell {
+fn multi_agent_event(title: impl Into<String>, details: Vec<Line<'static>>) -> PlainHistoryCell {
     let title = title.into();
     let mut lines: Vec<Line<'static>> =
         vec![vec![Span::from("• ").dim(), Span::from(title).bold()].into()];
@@ -163,7 +164,7 @@ fn prompt_line(prompt: &str) -> Option<Line<'static>> {
     } else {
         Some(detail_line(
             "prompt",
-            Span::from(truncate_text(trimmed, COLLAB_PROMPT_PREVIEW_GRAPHEMES)).dim(),
+            Span::from(truncate_text(trimmed, MULTI_AGENT_PROMPT_PREVIEW_GRAPHEMES)).dim(),
         ))
     }
 }
@@ -253,7 +254,7 @@ fn wait_complete_lines(statuses: &HashMap<ThreadId, AgentStatus>) -> Vec<Line<'s
             AgentStatus::Completed(Some(message)) => {
                 let message_preview = truncate_text(
                     &message.split_whitespace().collect::<Vec<_>>().join(" "),
-                    COLLAB_AGENT_RESPONSE_PREVIEW_GRAPHEMES,
+                    MULTI_AGENT_RESPONSE_PREVIEW_GRAPHEMES,
                 );
                 spans.push(Span::from(": ").dim());
                 spans.push(Span::from(message_preview));
@@ -261,7 +262,7 @@ fn wait_complete_lines(statuses: &HashMap<ThreadId, AgentStatus>) -> Vec<Line<'s
             AgentStatus::Errored(error) => {
                 let error_preview = truncate_text(
                     &error.split_whitespace().collect::<Vec<_>>().join(" "),
-                    COLLAB_AGENT_ERROR_PREVIEW_GRAPHEMES,
+                    MULTI_AGENT_ERROR_PREVIEW_GRAPHEMES,
                 );
                 spans.push(Span::from(": ").dim());
                 spans.push(Span::from(error_preview).dim());

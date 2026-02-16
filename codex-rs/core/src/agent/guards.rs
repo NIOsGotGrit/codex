@@ -41,6 +41,14 @@ pub(crate) fn exceeds_thread_spawn_depth_limit(depth: i32) -> bool {
 }
 
 impl Guards {
+    pub(crate) fn tracked_thread_ids(&self) -> Vec<ThreadId> {
+        let threads = self
+            .threads_set
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        threads.iter().copied().collect()
+    }
+
     pub(crate) fn reserve_spawn_slot(
         self: &Arc<Self>,
         max_threads: Option<usize>,
