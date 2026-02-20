@@ -4819,7 +4819,7 @@ impl ChatWidget {
 
     fn terminal_title_status_text(&self) -> String {
         if self.mcp_startup_status.is_some() {
-            return "Starting".to_string();
+            return "Starting...".to_string();
         }
 
         if !self.bottom_pane.is_task_running() {
@@ -4827,7 +4827,7 @@ impl ChatWidget {
         }
 
         if self.current_status_header == "Working" {
-            return "Working".to_string();
+            return "Working...".to_string();
         }
 
         if self
@@ -4838,10 +4838,10 @@ impl ChatWidget {
         }
 
         if self.current_status_header.starts_with("Undo") {
-            return "Undoing".to_string();
+            return "Undoing...".to_string();
         }
 
-        "Thinking".to_string()
+        "Thinking...".to_string()
     }
 
     fn terminal_title_task_progress(&self) -> Option<String> {
