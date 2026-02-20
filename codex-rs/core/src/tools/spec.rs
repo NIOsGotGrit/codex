@@ -545,7 +545,7 @@ fn create_spawn_agent_tool(config: &ToolsConfig) -> ToolSpec {
         "spawn_mode".to_string(),
         JsonSchema::String {
             description: Some(
-                "Spawn behavior: spawn (default), fork (preserve history), or watchdog (idle-time check-ins). Watchdog mode returns a virtual handle, not a conversational worker."
+                "Spawn behavior: spawn (default), fork (preserve history), or watchdog (idle-time check-ins). Watchdog mode returns a virtual handle, not a conversational worker. Watchdog check-ins are asynchronous and cannot occur until after the current turn ends and the owner thread is idle."
                     .to_string(),
             ),
         },
@@ -562,7 +562,7 @@ fn create_spawn_agent_tool(config: &ToolsConfig) -> ToolSpec {
     ToolSpec::Function(ResponsesApiTool {
         name: "spawn_agent".to_string(),
         description:
-            "Spawn a sub-agent for a well-scoped task. Returns the agent id to use to communicate with this agent. Watchdog handles report asynchronously via the multi-agent inbox and should be closed with close_agent when no longer needed."
+            "Spawn a sub-agent for a well-scoped task. Returns the agent id to use to communicate with this agent. Watchdog mode returns a control handle (not a conversational agent); watchdog check-ins are asynchronous and can only arrive after the current turn ends and the owner thread becomes idle. Do not wait/sleep/poll to force a watchdog check-in."
                 .to_string(),
         strict: false,
         parameters: JsonSchema::Object {
@@ -707,7 +707,8 @@ fn create_list_agents_tool() -> ToolSpec {
 
     ToolSpec::Function(ResponsesApiTool {
         name: "list_agents".to_string(),
-        description: "List agents spawned by an agent, optionally recursively.".to_string(),
+        description: "List agents spawned by an agent, optionally recursively. This is a status view, not a way to trigger watchdog check-ins; polling `list_agents` during the same turn will not make a watchdog fire."
+            .to_string(),
         strict: false,
         parameters: JsonSchema::Object {
             properties,
@@ -724,7 +725,7 @@ fn create_wait_tool() -> ToolSpec {
         JsonSchema::Array {
             items: Box::new(JsonSchema::String { description: None }),
             description: Some(
-                "Agent ids to wait on. Pass multiple ids to wait for whichever finishes first. Watchdog handle ids are ignored by wait and returned immediately with their current status."
+                "Agent ids to wait on. Pass multiple ids to wait for whichever finishes first. Watchdog handle ids cannot be waited on for new check-ins. If all ids are watchdog handles, wait returns an immediate correction instead of blocking. If mixed with normal agent ids, wait still waits on normal agents and includes current watchdog handle statuses. Do not use `list_agents` or shell `sleep` to poll for same-turn watchdog check-ins."
                     .to_string(),
             ),
         },
@@ -740,7 +741,7 @@ fn create_wait_tool() -> ToolSpec {
 
     ToolSpec::Function(ResponsesApiTool {
         name: "wait".to_string(),
-        description: "Wait for agents to reach a final status. Completed statuses may include the agent's final message. Returns empty status when timed out. If only watchdog handles are provided, wait is a no-op and returns immediately."
+        description: "Wait for agents to reach a final status. Completed statuses may include the agent's final message. Returns empty status when timed out. Watchdog handles are status-only in this tool: wait cannot block for watchdog check-ins. If only watchdog handles are provided, wait returns an immediate correction; if mixed with normal agents, wait includes current watchdog handle statuses while waiting on normal agents. Sleeping or polling cannot make a watchdog check-in happen while the current turn is active."
             .to_string(),
         strict: false,
         parameters: JsonSchema::Object {
