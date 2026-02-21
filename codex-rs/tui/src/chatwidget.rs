@@ -3303,6 +3303,9 @@ impl ChatWidget {
             SlashCommand::New => {
                 self.app_event_tx.send(AppEvent::NewSession);
             }
+            SlashCommand::Clear => {
+                self.app_event_tx.send(AppEvent::ClearUi);
+            }
             SlashCommand::Resume => {
                 self.app_event_tx.send(AppEvent::OpenResumePicker);
             }
@@ -6393,7 +6396,6 @@ impl ChatWidget {
         &self.current_collaboration_mode
     }
 
-    #[cfg(test)]
     pub(crate) fn current_reasoning_effort(&self) -> Option<ReasoningEffortConfig> {
         self.effective_reasoning_effort()
     }
