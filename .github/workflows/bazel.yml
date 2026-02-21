@@ -47,6 +47,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Set up Node.js for js_repl tests
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: codex-rs/node-version.txt
+          check-latest: true
+
+      - name: Make Node.js available in PATH (Unix)
+        if: runner.os != 'Windows'
+        run: cp "$(which node)" /usr/local/bin
+
       # Some integration tests rely on DotSlash being installed.
       # See https://github.com/openai/codex/pull/7617.
       - name: Install DotSlash
@@ -116,6 +126,12 @@ jobs:
             --build_metadata=ROLE=CI
             --build_metadata=VISIBILITY=PUBLIC
           )
+
+          if [[ "${RUNNER_OS:-}" != "Windows" ]]; then
+            # Bazel test sandboxes on macOS may resolve an older Homebrew `node`
+            # before the `actions/setup-node` runtime on PATH.
+            bazel_args+=(--test_env=CODEX_JS_REPL_NODE_PATH=/usr/local/bin/node)
+          fi
 
           if [[ -n "${BUILDBUDDY_API_KEY:-}" ]]; then
             echo "BuildBuddy API key is available; using remote Bazel configuration."

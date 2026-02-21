@@ -11,3 +11,13 @@ slow-timeout = { period = "1m", terminate-after = 4 }
 [[profile.default.overrides]]
 filter = 'test(approval_matrix_covers_all_modes)'
 slow-timeout = { period = "30s", terminate-after = 2 }
+
+[[profile.default.overrides]]
+# js_repl runtime tests each spawn a Node kernel; on Windows x64 CI they can
+# timeout when nextest launches many of them concurrently. This covers both
+# unit tests and tool-level integration tests that exercise js_repl.
+filter = 'package(codex-core) and (test(tools::js_repl::tests::js_repl_) or test(suite::js_repl::js_repl_) or test(suite::view_image::js_repl_))'
+test-group = "js-repl-runtime-serial"
+
+[test-groups.js-repl-runtime-serial]
+max-threads = 1
