@@ -18,12 +18,13 @@ pub(crate) struct SettingsUpdateEnvelope {
 impl SettingsUpdateEnvelope {
     pub(crate) fn into_items(self) -> Vec<ResponseItem> {
         let mut items = Vec::with_capacity(2);
-        // Preserve existing ordering: environment/contextual user update before developer diffs.
-        if let Some(contextual_user_message) = self.contextual_user_message {
-            items.push(contextual_user_message);
-        }
+        // Keep developer updates first so `<model_switch>` guidance can precede contextual
+        // user updates like environment diffs.
         if let Some(developer_message) = self.developer_message {
             items.push(developer_message);
+        }
+        if let Some(contextual_user_message) = self.contextual_user_message {
+            items.push(contextual_user_message);
         }
         items
     }
