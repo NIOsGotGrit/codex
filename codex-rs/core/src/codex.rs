@@ -2569,12 +2569,11 @@ impl Session {
         }
     }
 
-    /// Emit an exec approval request event and await the user's decision.
+    /// Emit a pre-tool-use hook request event and await the hook decision.
     ///
-    /// The request is keyed by `call_id` + `approval_id` so matching responses are delivered
-    /// to the correct in-flight turn. If the task is aborted, this returns the
-    /// default `ReviewDecision` (`Denied`).
-    #[allow(clippy::too_many_arguments)]
+    /// The request is keyed by `call_id` so matching responses are delivered
+    /// to the correct in-flight turn. If the request times out or the response
+    /// channel closes, this defaults to `HookDecision::Allow` (fail-open).
     pub async fn request_pre_tool_use_hook(
         &self,
         turn_context: &TurnContext,
@@ -2609,17 +2608,13 @@ impl Session {
         match tokio::time::timeout(timeout_duration, rx_response).await {
             Ok(Ok(decision)) => decision,
             Ok(Err(_)) | Err(_) => {
-                self.clear_pending_hook(&call_id).await;
+                let mut active = self.active_turn.lock().await;
+                if let Some(at) = active.as_mut() {
+                    let mut ts = at.turn_state.lock().await;
+                    ts.remove_pending_hook(&call_id);
+                }
                 HookDecision::Allow
             }
-        }
-    }
-
-    async fn clear_pending_hook(&self, call_id: &str) {
-        let mut active = self.active_turn.lock().await;
-        if let Some(at) = active.as_mut() {
-            let mut ts = at.turn_state.lock().await;
-            ts.remove_pending_hook(call_id);
         }
     }
 
