@@ -264,6 +264,14 @@ pub enum Op {
         decision: ReviewDecision,
     },
 
+    /// Resolve a hook pre-tool-use request.
+    HookResponse {
+        /// The id of the hook request.
+        id: String,
+        /// Decision returned by the hook client.
+        decision: HookDecision,
+    },
+
     /// Resolve an MCP elicitation request.
     ResolveElicitation {
         /// Name of the MCP server that issued the request.
@@ -1044,6 +1052,15 @@ pub enum EventMsg {
     ElicitationRequest(ElicitationRequestEvent),
 
     ApplyPatchApprovalRequest(ApplyPatchApprovalRequestEvent),
+
+    /// Blocking pre-tool-use hook request.
+    HookPreToolUseRequest(HookPreToolUseRequestEvent),
+
+    /// Notification emitted after successful tool execution.
+    HookPostToolUse(HookPostToolUseEvent),
+
+    /// Notification emitted after failed tool execution.
+    HookPostToolUseFailure(HookPostToolUseFailureEvent),
 
     /// Notification advising the user that something they are using has been
     /// deprecated and should be phased out.
@@ -2358,6 +2375,46 @@ pub struct TerminalInteractionEvent {
     pub stdin: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]
+pub struct HookPreToolUseRequestEvent {
+    /// Turn ID that this request belongs to.
+    pub turn_id: String,
+    /// Identifier that uniquely identifies this hook request.
+    pub call_id: String,
+    /// Tool name being invoked.
+    pub tool_name: String,
+    /// Tool input payload.
+    pub tool_input: Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]
+pub struct HookPostToolUseEvent {
+    /// Turn ID that this notification belongs to.
+    pub turn_id: String,
+    /// Identifier that uniquely identifies this tool call.
+    pub call_id: String,
+    /// Tool name that was invoked.
+    pub tool_name: String,
+    /// Tool input payload used for execution.
+    pub tool_input: Value,
+    /// Tool output payload returned by execution.
+    pub tool_output: Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]
+pub struct HookPostToolUseFailureEvent {
+    /// Turn ID that this notification belongs to.
+    pub turn_id: String,
+    /// Identifier that uniquely identifies this tool call.
+    pub call_id: String,
+    /// Tool name that was invoked.
+    pub tool_name: String,
+    /// Tool input payload used for execution.
+    pub tool_input: Value,
+    /// Failure message returned by execution.
+    pub error: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema, TS)]
 pub struct BackgroundEventEvent {
     pub message: String,
@@ -2772,6 +2829,15 @@ impl ReviewDecision {
             ReviewDecision::Abort => "abort",
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]
+#[serde(tag = "decision", rename_all = "snake_case")]
+#[ts(tag = "decision", rename_all = "snake_case")]
+pub enum HookDecision {
+    Allow,
+    Deny { reason: String },
+    Modify { new_input: Value },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]

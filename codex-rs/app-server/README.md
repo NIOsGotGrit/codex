@@ -682,6 +682,35 @@ Order of messages:
 
 UI guidance for IDEs: surface an approval dialog as soon as the request arrives. The turn will proceed after the server receives a response to the approval request. The terminal `item/completed` notification will be sent with the appropriate status.
 
+## Hook protocol (experimental)
+
+When hook protocol is enabled in Codex config, the app-server can expose tool hook events as RPC messages.
+
+- Config (all disabled by default):
+  - `[hook_protocol] enabled = true`
+  - `pre_tool_use = true`
+  - `post_tool_use = true`
+- If `enabled = false`, behavior is identical to upstream (no hook RPC traffic).
+
+### Pre-tool-use (blocking request)
+
+Before a tool runs, the server sends a blocking request:
+
+1. `item/hook/preToolUse` (request) with `threadId`, `turnId`, `itemId`, `toolName`, `toolInput`.
+2. Client responds with `decision`:
+   - `allow`
+   - `deny` with `reason`
+   - `modify` with `newInput`
+
+If the client denies, execution is skipped. If it modifies, the modified input is used for approval/execution.
+
+### Post-tool-use (notifications)
+
+After tool execution, the server emits one of:
+
+- `item/hook/postToolUse` (notification) with `threadId`, `turnId`, `itemId`, `toolName`, `toolInput`, `toolOutput`
+- `item/hook/postToolUseFailure` (notification) with `threadId`, `turnId`, `itemId`, `toolName`, `toolInput`, `error`
+
 ### Dynamic tool calls (experimental)
 
 `dynamicTools` on `thread/start` and the corresponding `item/tool/call` request/response flow are experimental APIs. To enable them, set `initialize.params.capabilities.experimentalApi = true`.

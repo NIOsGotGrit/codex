@@ -665,6 +665,12 @@ server_request_definitions! {
         response: v2::FileChangeRequestApprovalResponse,
     },
 
+    /// Sent before executing a specific tool call. Client must return a decision.
+    HookPreToolUse => "item/hook/preToolUse" {
+        params: v2::HookPreToolUseParams,
+        response: v2::HookPreToolUseResponse,
+    },
+
     /// EXPERIMENTAL - Request input from the user for a tool call.
     ToolRequestUserInput => "item/tool/requestUserInput" {
         params: v2::ToolRequestUserInputParams,
@@ -793,6 +799,8 @@ server_notification_definitions! {
     CommandExecutionOutputDelta => "item/commandExecution/outputDelta" (v2::CommandExecutionOutputDeltaNotification),
     TerminalInteraction => "item/commandExecution/terminalInteraction" (v2::TerminalInteractionNotification),
     FileChangeOutputDelta => "item/fileChange/outputDelta" (v2::FileChangeOutputDeltaNotification),
+    HookPostToolUse => "item/hook/postToolUse" (v2::HookPostToolUseNotification),
+    HookPostToolUseFailure => "item/hook/postToolUseFailure" (v2::HookPostToolUseFailureNotification),
     McpToolCallProgress => "item/mcpToolCall/progress" (v2::McpToolCallProgressNotification),
     McpServerOauthLoginCompleted => "mcpServer/oauthLogin/completed" (v2::McpServerOauthLoginCompletedNotification),
     AccountUpdated => "account/updated" (v2::AccountUpdatedNotification),

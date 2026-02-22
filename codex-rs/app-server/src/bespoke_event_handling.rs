@@ -36,6 +36,11 @@ use codex_app_server_protocol::FileChangeOutputDeltaNotification;
 use codex_app_server_protocol::FileChangeRequestApprovalParams;
 use codex_app_server_protocol::FileChangeRequestApprovalResponse;
 use codex_app_server_protocol::FileUpdateChange;
+use codex_app_server_protocol::HookPostToolUseFailureNotification;
+use codex_app_server_protocol::HookPostToolUseNotification;
+use codex_app_server_protocol::HookPreToolUseDecision as V2HookPreToolUseDecision;
+use codex_app_server_protocol::HookPreToolUseParams;
+use codex_app_server_protocol::HookPreToolUseResponse;
 use codex_app_server_protocol::InterruptConversationResponse;
 use codex_app_server_protocol::ItemCompletedNotification;
 use codex_app_server_protocol::ItemStartedNotification;
@@ -88,6 +93,10 @@ use codex_protocol::protocol::Event;
 use codex_protocol::protocol::EventMsg;
 use codex_protocol::protocol::ExecApprovalRequestEvent;
 use codex_protocol::protocol::ExecCommandEndEvent;
+use codex_protocol::protocol::HookDecision;
+use codex_protocol::protocol::HookPostToolUseEvent;
+use codex_protocol::protocol::HookPostToolUseFailureEvent;
+use codex_protocol::protocol::HookPreToolUseRequestEvent;
 use codex_protocol::protocol::McpToolCallBeginEvent;
 use codex_protocol::protocol::McpToolCallEndEvent;
 use codex_protocol::protocol::Op;
@@ -359,6 +368,72 @@ pub(crate) async fn apply_bespoke_event_handling(
                         .await;
                     });
                 }
+            }
+        }
+        EventMsg::HookPreToolUseRequest(HookPreToolUseRequestEvent {
+            turn_id,
+            call_id,
+            tool_name,
+            tool_input,
+        }) => {
+            if matches!(api_version, ApiVersion::V2) {
+                let params = HookPreToolUseParams {
+                    thread_id: conversation_id.to_string(),
+                    turn_id,
+                    item_id: call_id.clone(),
+                    tool_name,
+                    tool_input,
+                };
+                let rx = outgoing
+                    .send_request(ServerRequestPayload::HookPreToolUse(params))
+                    .await;
+                tokio::spawn(async move {
+                    on_hook_pre_tool_use_response(call_id, rx, conversation).await;
+                });
+            }
+        }
+        EventMsg::HookPostToolUse(HookPostToolUseEvent {
+            turn_id,
+            call_id,
+            tool_name,
+            tool_input,
+            tool_output,
+        }) => {
+            if matches!(api_version, ApiVersion::V2) {
+                let notification = HookPostToolUseNotification {
+                    thread_id: conversation_id.to_string(),
+                    turn_id,
+                    item_id: call_id,
+                    tool_name,
+                    tool_input,
+                    tool_output,
+                };
+                outgoing
+                    .send_server_notification(ServerNotification::HookPostToolUse(notification))
+                    .await;
+            }
+        }
+        EventMsg::HookPostToolUseFailure(HookPostToolUseFailureEvent {
+            turn_id,
+            call_id,
+            tool_name,
+            tool_input,
+            error,
+        }) => {
+            if matches!(api_version, ApiVersion::V2) {
+                let notification = HookPostToolUseFailureNotification {
+                    thread_id: conversation_id.to_string(),
+                    turn_id,
+                    item_id: call_id,
+                    tool_name,
+                    tool_input,
+                    error,
+                };
+                outgoing
+                    .send_server_notification(ServerNotification::HookPostToolUseFailure(
+                        notification,
+                    ))
+                    .await;
             }
         }
         EventMsg::RequestUserInput(request) => {
@@ -1657,6 +1732,48 @@ async fn on_exec_approval_response(
     }
 }
 
+async fn on_hook_pre_tool_use_response(
+    call_id: String,
+    receiver: oneshot::Receiver<ClientRequestResult>,
+    conversation: Arc<CodexThread>,
+) {
+    let response = receiver.await;
+    let decision = match response {
+        Ok(Ok(value)) => serde_json::from_value::<HookPreToolUseResponse>(value)
+            .map(|response| map_hook_pre_tool_use_decision(response.decision))
+            .unwrap_or_else(|err| {
+                error!("failed to deserialize HookPreToolUseResponse: {err}");
+                HookDecision::Allow
+            }),
+        Ok(Err(err)) => {
+            error!("request failed with client error: {err:?}");
+            HookDecision::Allow
+        }
+        Err(err) => {
+            error!("request failed: {err:?}");
+            HookDecision::Allow
+        }
+    };
+
+    if let Err(err) = conversation
+        .submit(Op::HookResponse {
+            id: call_id,
+            decision,
+        })
+        .await
+    {
+        error!("failed to submit HookResponse: {err}");
+    }
+}
+
+fn map_hook_pre_tool_use_decision(decision: V2HookPreToolUseDecision) -> HookDecision {
+    match decision {
+        V2HookPreToolUseDecision::Allow => HookDecision::Allow,
+        V2HookPreToolUseDecision::Deny { reason } => HookDecision::Deny { reason },
+        V2HookPreToolUseDecision::Modify { new_input } => HookDecision::Modify { new_input },
+    }
+}
+
 async fn on_request_user_input_response(
     event_turn_id: String,
     receiver: oneshot::Receiver<ClientRequestResult>,
@@ -2154,6 +2271,37 @@ mod tests {
             .collect(),
         };
         assert_eq!(item, expected);
+    }
+
+    #[test]
+    fn map_hook_pre_tool_use_decision_maps_allow() {
+        let decision = map_hook_pre_tool_use_decision(V2HookPreToolUseDecision::Allow);
+        assert_eq!(decision, HookDecision::Allow);
+    }
+
+    #[test]
+    fn map_hook_pre_tool_use_decision_maps_deny() {
+        let decision = map_hook_pre_tool_use_decision(V2HookPreToolUseDecision::Deny {
+            reason: "blocked".to_string(),
+        });
+        assert_eq!(
+            decision,
+            HookDecision::Deny {
+                reason: "blocked".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn map_hook_pre_tool_use_decision_maps_modify() {
+        let new_input = serde_json::json!({
+            "type": "function",
+            "arguments": { "pattern": "todo" }
+        });
+        let decision = map_hook_pre_tool_use_decision(V2HookPreToolUseDecision::Modify {
+            new_input: new_input.clone(),
+        });
+        assert_eq!(decision, HookDecision::Modify { new_input });
     }
 
     #[tokio::test]

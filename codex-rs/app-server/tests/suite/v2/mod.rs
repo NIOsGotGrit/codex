@@ -8,6 +8,7 @@ mod connection_handling_websocket;
 mod dynamic_tools;
 mod experimental_api;
 mod experimental_feature_list;
+mod hook_protocol;
 mod initialize;
 mod model_list;
 mod output_schema;

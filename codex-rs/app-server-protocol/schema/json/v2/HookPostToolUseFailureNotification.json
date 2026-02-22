@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "error": {
+      "type": "string"
+    },
+    "itemId": {
+      "type": "string"
+    },
+    "threadId": {
+      "type": "string"
+    },
+    "toolInput": true,
+    "toolName": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "error",
+    "itemId",
+    "threadId",
+    "toolInput",
+    "toolName",
+    "turnId"
+  ],
+  "title": "HookPostToolUseFailureNotification",
+  "type": "object"
+}

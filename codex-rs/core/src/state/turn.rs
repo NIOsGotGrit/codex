@@ -14,6 +14,7 @@ use codex_protocol::request_user_input::RequestUserInputResponse;
 use tokio::sync::oneshot;
 
 use crate::codex::TurnContext;
+use crate::protocol::HookDecision;
 use crate::protocol::ReviewDecision;
 use crate::tasks::SessionTask;
 
@@ -70,6 +71,7 @@ impl ActiveTurn {
 #[derive(Default)]
 pub(crate) struct TurnState {
     pending_approvals: HashMap<String, oneshot::Sender<ReviewDecision>>,
+    pending_hooks: HashMap<String, oneshot::Sender<HookDecision>>,
     pending_user_input: HashMap<String, oneshot::Sender<RequestUserInputResponse>>,
     pending_dynamic_tools: HashMap<String, oneshot::Sender<DynamicToolResponse>>,
     pending_input: Vec<ResponseInputItem>,
@@ -93,9 +95,25 @@ impl TurnState {
 
     pub(crate) fn clear_pending(&mut self) {
         self.pending_approvals.clear();
+        self.pending_hooks.clear();
         self.pending_user_input.clear();
         self.pending_dynamic_tools.clear();
         self.pending_input.clear();
+    }
+
+    pub(crate) fn insert_pending_hook(
+        &mut self,
+        key: String,
+        tx: oneshot::Sender<HookDecision>,
+    ) -> Option<oneshot::Sender<HookDecision>> {
+        self.pending_hooks.insert(key, tx)
+    }
+
+    pub(crate) fn remove_pending_hook(
+        &mut self,
+        key: &str,
+    ) -> Option<oneshot::Sender<HookDecision>> {
+        self.pending_hooks.remove(key)
     }
 
     pub(crate) fn insert_pending_user_input(
