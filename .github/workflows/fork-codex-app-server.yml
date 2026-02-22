@@ -1,0 +1,72 @@
+name: fork-codex-app-server
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish a GitHub Release with the built binary"
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: "Release tag (required when publish_release=true), e.g. salambo-codex-v0.1.0"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-x64:
+    name: Build codex-app-server (linux x64)
+    runs-on: ubuntu-22.04
+
+    defaults:
+      run:
+        working-directory: codex-rs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release -p codex-app-server
+
+      - name: Package artifact
+        run: |
+          mkdir -p dist
+          cp target/release/codex-app-server dist/codex-app-server-linux-x64
+          chmod +x dist/codex-app-server-linux-x64
+          sha256sum dist/codex-app-server-linux-x64 > dist/codex-app-server-linux-x64.sha256
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-app-server-linux-x64
+          path: |
+            codex-rs/dist/codex-app-server-linux-x64
+            codex-rs/dist/codex-app-server-linux-x64.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Validate release inputs
+        if: ${{ inputs.publish_release }}
+        run: |
+          if [[ -z "${{ inputs.release_tag }}" ]]; then
+            echo "release_tag is required when publish_release=true"
+            exit 1
+          fi
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_tag }}
+          files: |
+            codex-rs/dist/codex-app-server-linux-x64
+            codex-rs/dist/codex-app-server-linux-x64.sha256
+          generate_release_notes: true
