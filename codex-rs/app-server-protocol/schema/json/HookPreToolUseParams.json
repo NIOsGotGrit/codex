@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "itemId": {
+      "type": "string"
+    },
+    "threadId": {
+      "type": "string"
+    },
+    "toolInput": true,
+    "toolName": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "itemId",
+    "threadId",
+    "toolInput",
+    "toolName",
+    "turnId"
+  ],
+  "title": "HookPreToolUseParams",
+  "type": "object"
+}

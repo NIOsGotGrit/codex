@@ -3525,6 +3525,58 @@ pub struct ContextCompactedNotification {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS, ExperimentalApi)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "v2/")]
+pub struct HookPreToolUseParams {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub tool_name: String,
+    pub tool_input: JsonValue,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
+#[serde(tag = "decision", rename_all = "camelCase")]
+#[ts(tag = "decision", rename_all = "camelCase")]
+#[ts(export_to = "v2/")]
+pub enum HookPreToolUseDecision {
+    Allow,
+    Deny { reason: String },
+    Modify { new_input: JsonValue },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "v2/")]
+pub struct HookPreToolUseResponse {
+    pub decision: HookPreToolUseDecision,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "v2/")]
+pub struct HookPostToolUseNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub tool_name: String,
+    pub tool_input: JsonValue,
+    pub tool_output: JsonValue,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "v2/")]
+pub struct HookPostToolUseFailureNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub tool_name: String,
+    pub tool_input: JsonValue,
+    pub error: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "v2/")]
 pub struct CommandExecutionRequestApprovalParams {
     pub thread_id: String,
     pub turn_id: String,

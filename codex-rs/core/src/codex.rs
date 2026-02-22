@@ -78,6 +78,8 @@ use codex_protocol::models::format_allow_prefixes;
 use codex_protocol::openai_models::ModelInfo;
 use codex_protocol::protocol::FileChange;
 use codex_protocol::protocol::HasLegacyEvent;
+use codex_protocol::protocol::HookDecision;
+use codex_protocol::protocol::HookPreToolUseRequestEvent;
 use codex_protocol::protocol::ItemCompletedEvent;
 use codex_protocol::protocol::ItemStartedEvent;
 use codex_protocol::protocol::RawResponseItemEvent;
@@ -2573,6 +2575,55 @@ impl Session {
     /// to the correct in-flight turn. If the task is aborted, this returns the
     /// default `ReviewDecision` (`Denied`).
     #[allow(clippy::too_many_arguments)]
+    pub async fn request_pre_tool_use_hook(
+        &self,
+        turn_context: &TurnContext,
+        call_id: String,
+        tool_name: String,
+        tool_input: Value,
+    ) -> HookDecision {
+        let (tx_response, rx_response) = oneshot::channel();
+        let prev_entry = {
+            let mut active = self.active_turn.lock().await;
+            match active.as_mut() {
+                Some(at) => {
+                    let mut ts = at.turn_state.lock().await;
+                    ts.insert_pending_hook(call_id.clone(), tx_response)
+                }
+                None => None,
+            }
+        };
+        if prev_entry.is_some() {
+            warn!("Overwriting existing pending hook for call_id: {call_id}");
+        }
+
+        let event = EventMsg::HookPreToolUseRequest(HookPreToolUseRequestEvent {
+            turn_id: turn_context.sub_id.clone(),
+            call_id: call_id.clone(),
+            tool_name,
+            tool_input,
+        });
+        self.send_event(turn_context, event).await;
+
+        let timeout_duration = std::time::Duration::from_secs(120);
+        match tokio::time::timeout(timeout_duration, rx_response).await {
+            Ok(Ok(decision)) => decision,
+            Ok(Err(_)) | Err(_) => {
+                self.clear_pending_hook(&call_id).await;
+                HookDecision::Allow
+            }
+        }
+    }
+
+    async fn clear_pending_hook(&self, call_id: &str) {
+        let mut active = self.active_turn.lock().await;
+        if let Some(at) = active.as_mut() {
+            let mut ts = at.turn_state.lock().await;
+            ts.remove_pending_hook(call_id);
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn request_command_approval(
         &self,
         turn_context: &TurnContext,
@@ -2824,6 +2875,27 @@ impl Session {
             }
             None => {
                 warn!("No pending approval found for call_id: {approval_id}");
+            }
+        }
+    }
+
+    pub async fn notify_hook_response(&self, call_id: &str, decision: HookDecision) {
+        let entry = {
+            let mut active = self.active_turn.lock().await;
+            match active.as_mut() {
+                Some(at) => {
+                    let mut ts = at.turn_state.lock().await;
+                    ts.remove_pending_hook(call_id)
+                }
+                None => None,
+            }
+        };
+        match entry {
+            Some(tx_response) => {
+                tx_response.send(decision).ok();
+            }
+            None => {
+                warn!("No pending hook found for call_id: {call_id}");
             }
         }
     }
@@ -3704,6 +3776,9 @@ async fn submission_loop(sess: Arc<Session>, config: Arc<Config>, rx_sub: Receiv
             Op::PatchApproval { id, decision } => {
                 handlers::patch_approval(&sess, id, decision).await;
             }
+            Op::HookResponse { id, decision } => {
+                handlers::hook_response(&sess, id, decision).await;
+            }
             Op::UserInputAnswer { id, response } => {
                 handlers::request_user_input_response(&sess, id, response).await;
             }
@@ -3819,6 +3894,7 @@ mod handlers {
     use codex_protocol::protocol::ErrorEvent;
     use codex_protocol::protocol::Event;
     use codex_protocol::protocol::EventMsg;
+    use codex_protocol::protocol::HookDecision;
     use codex_protocol::protocol::ListCustomPromptsResponseEvent;
     use codex_protocol::protocol::ListRemoteSkillsResponseEvent;
     use codex_protocol::protocol::ListSkillsResponseEvent;
@@ -4059,6 +4135,10 @@ mod handlers {
             }
             other => sess.notify_approval(&id, other).await,
         }
+    }
+
+    pub async fn hook_response(sess: &Arc<Session>, id: String, decision: HookDecision) {
+        sess.notify_hook_response(&id, decision).await;
     }
 
     pub async fn request_user_input_response(
@@ -7769,6 +7849,41 @@ mod tests {
 
         let history = sess.clone_history().await;
         assert_eq!(initial_context, history.raw_items());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn request_pre_tool_use_hook_timeout_defaults_to_allow_and_clears_pending_hook() {
+        let (sess, turn_context, _rx) = make_session_and_context_with_rx().await;
+        *sess.active_turn.lock().await = Some(crate::state::ActiveTurn::default());
+
+        let call_id = "hook-timeout-call".to_string();
+        let sess_for_task = Arc::clone(&sess);
+        let turn_context_for_task = Arc::clone(&turn_context);
+        let call_id_for_task = call_id.clone();
+        let decision_task = tokio::spawn(async move {
+            sess_for_task
+                .request_pre_tool_use_hook(
+                    turn_context_for_task.as_ref(),
+                    call_id_for_task,
+                    "shell_command".to_string(),
+                    json!({ "command": "echo should-timeout" }),
+                )
+                .await
+        });
+
+        tokio::task::yield_now().await;
+        sleep(Duration::from_secs(121)).await;
+
+        let decision = decision_task.await.expect("join hook decision task");
+        assert_eq!(HookDecision::Allow, decision);
+
+        let mut active_turn = sess.active_turn.lock().await;
+        let active_turn = active_turn.as_mut().expect("active turn should exist");
+        let mut turn_state = active_turn.turn_state.lock().await;
+        assert!(
+            turn_state.remove_pending_hook(&call_id).is_none(),
+            "timed out hook request should be cleaned from pending_hooks"
+        );
     }
 
     #[tokio::test]

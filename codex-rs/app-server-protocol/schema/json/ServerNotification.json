@@ -936,6 +936,62 @@
       },
       "type": "object"
     },
+    "HookPostToolUseFailureNotification": {
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "toolInput": true,
+        "toolName": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "itemId",
+        "threadId",
+        "toolInput",
+        "toolName",
+        "turnId"
+      ],
+      "type": "object"
+    },
+    "HookPostToolUseNotification": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "toolInput": true,
+        "toolName": {
+          "type": "string"
+        },
+        "toolOutput": true,
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "itemId",
+        "threadId",
+        "toolInput",
+        "toolName",
+        "toolOutput",
+        "turnId"
+      ],
+      "type": "object"
+    },
     "ItemCompletedNotification": {
       "properties": {
         "item": {
@@ -3170,6 +3226,46 @@
         "params"
       ],
       "title": "Item/fileChange/outputDeltaNotification",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "method": {
+          "enum": [
+            "item/hook/postToolUse"
+          ],
+          "title": "Item/hook/postToolUseNotificationMethod",
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/definitions/HookPostToolUseNotification"
+        }
+      },
+      "required": [
+        "method",
+        "params"
+      ],
+      "title": "Item/hook/postToolUseNotification",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "method": {
+          "enum": [
+            "item/hook/postToolUseFailure"
+          ],
+          "title": "Item/hook/postToolUseFailureNotificationMethod",
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/definitions/HookPostToolUseFailureNotification"
+        }
+      },
+      "required": [
+        "method",
+        "params"
+      ],
+      "title": "Item/hook/postToolUseFailureNotification",
       "type": "object"
     },
     {

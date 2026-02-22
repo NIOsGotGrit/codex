@@ -206,6 +206,10 @@ pub struct Config {
     /// Effective permission configuration for shell tool execution.
     pub permissions: Permissions,
 
+    /// Hook protocol configuration for app-server hook request/notification
+    /// forwarding.
+    pub hook_protocol: HookProtocolConfig,
+
     /// enforce_residency means web traffic cannot be routed outside of a
     /// particular geography. HTTP clients should direct their requests
     /// using backend-specific headers or URLs to enforce this.
@@ -499,6 +503,23 @@ pub struct Config {
 
     /// OTEL configuration (exporter type, endpoint, headers, etc.).
     pub otel: crate::config::types::OtelConfig,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HookProtocolConfig {
+    pub enabled: bool,
+    pub pre_tool_use: bool,
+    pub post_tool_use: bool,
+}
+
+impl HookProtocolConfig {
+    pub fn pre_tool_use_enabled(self) -> bool {
+        self.enabled && self.pre_tool_use
+    }
+
+    pub fn post_tool_use_enabled(self) -> bool {
+        self.enabled && self.post_tool_use
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1034,6 +1055,10 @@ pub struct ConfigToml {
     #[serde(default)]
     pub permissions: Option<PermissionsToml>,
 
+    /// Settings for forwarding tool hook events over app-server protocol.
+    #[serde(default)]
+    pub hook_protocol: Option<HookProtocolToml>,
+
     /// Optional external command to spawn for end-user notifications.
     #[serde(default)]
     pub notify: Option<Vec<String>>,
@@ -1296,6 +1321,24 @@ impl From<ConfigToml> for UserSavedConfig {
 #[schemars(deny_unknown_fields)]
 pub struct ProjectConfig {
     pub trust_level: Option<TrustLevel>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct HookProtocolToml {
+    pub enabled: Option<bool>,
+    pub pre_tool_use: Option<bool>,
+    pub post_tool_use: Option<bool>,
+}
+
+impl From<HookProtocolToml> for HookProtocolConfig {
+    fn from(value: HookProtocolToml) -> Self {
+        Self {
+            enabled: value.enabled.unwrap_or(false),
+            pre_tool_use: value.pre_tool_use.unwrap_or(false),
+            post_tool_use: value.post_tool_use.unwrap_or(false),
+        }
+    }
 }
 
 impl ProjectConfig {
@@ -1800,6 +1843,7 @@ impl Config {
 
         let shell_environment_policy = cfg.shell_environment_policy.into();
         let allow_login_shell = cfg.allow_login_shell.unwrap_or(true);
+        let hook_protocol = cfg.hook_protocol.unwrap_or_default().into();
 
         let history = cfg.history.unwrap_or_default();
 
@@ -2075,6 +2119,7 @@ impl Config {
                 windows_sandbox_mode,
                 macos_seatbelt_profile_extensions: None,
             },
+            hook_protocol,
             enforce_residency: enforce_residency.value,
             did_user_set_custom_approval_policy_or_sandbox_mode,
             notify: cfg.notify,
@@ -4724,6 +4769,7 @@ model_verbosity = "high"
                     windows_sandbox_mode: None,
                     macos_seatbelt_profile_extensions: None,
                 },
+                hook_protocol: HookProtocolConfig::default(),
                 enforce_residency: Constrained::allow_any(None),
                 did_user_set_custom_approval_policy_or_sandbox_mode: true,
                 user_instructions: None,
@@ -4850,6 +4896,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            hook_protocol: HookProtocolConfig::default(),
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,
@@ -4974,6 +5021,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            hook_protocol: HookProtocolConfig::default(),
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,
@@ -5084,6 +5132,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            hook_protocol: HookProtocolConfig::default(),
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,

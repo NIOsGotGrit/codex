@@ -4464,7 +4464,10 @@ impl ChatWidget {
             | EventMsg::ReasoningContentDelta(_)
             | EventMsg::ReasoningRawContentDelta(_)
             | EventMsg::DynamicToolCallRequest(_)
-            | EventMsg::SkillRequestApproval(_) => {}
+            | EventMsg::SkillRequestApproval(_)
+            | EventMsg::HookPreToolUseRequest(_)
+            | EventMsg::HookPostToolUse(_)
+            | EventMsg::HookPostToolUseFailure(_) => {}
             EventMsg::RealtimeConversationStarted(ev) => {
                 if !from_replay {
                     self.on_realtime_conversation_started(ev);

@@ -609,6 +609,21 @@
         }
       ]
     },
+    "HookProtocolToml": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "post_tool_use": {
+          "type": "boolean"
+        },
+        "pre_tool_use": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "MemoriesToml": {
       "additionalProperties": false,
       "description": "Memories settings loaded from config.toml.",
@@ -1789,6 +1804,15 @@
       ],
       "default": null,
       "description": "Settings that govern if and what will be written to `~/.codex/history.jsonl`."
+    },
+    "hook_protocol": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/HookProtocolToml"
+        }
+      ],
+      "default": null,
+      "description": "Settings for forwarding tool hook events over app-server protocol."
     },
     "instructions": {
       "description": "System instructions.",
