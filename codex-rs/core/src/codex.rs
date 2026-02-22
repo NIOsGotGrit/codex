@@ -2399,55 +2399,6 @@ impl Session {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn request_pre_tool_use_hook(
-        &self,
-        turn_context: &TurnContext,
-        call_id: String,
-        tool_name: String,
-        tool_input: Value,
-    ) -> HookDecision {
-        let (tx_response, rx_response) = oneshot::channel();
-        let prev_entry = {
-            let mut active = self.active_turn.lock().await;
-            match active.as_mut() {
-                Some(at) => {
-                    let mut ts = at.turn_state.lock().await;
-                    ts.insert_pending_hook(call_id.clone(), tx_response)
-                }
-                None => None,
-            }
-        };
-        if prev_entry.is_some() {
-            warn!("Overwriting existing pending hook for call_id: {call_id}");
-        }
-
-        let event = EventMsg::HookPreToolUseRequest(HookPreToolUseRequestEvent {
-            turn_id: turn_context.sub_id.clone(),
-            call_id: call_id.clone(),
-            tool_name,
-            tool_input,
-        });
-        self.send_event(turn_context, event).await;
-
-        let timeout_duration = std::time::Duration::from_secs(120);
-        match tokio::time::timeout(timeout_duration, rx_response).await {
-            Ok(Ok(decision)) => decision,
-            Ok(Err(_)) | Err(_) => {
-                self.clear_pending_hook(&call_id).await;
-                HookDecision::Allow
-            }
-        }
-    }
-
-    async fn clear_pending_hook(&self, call_id: &str) {
-        let mut active = self.active_turn.lock().await;
-        if let Some(at) = active.as_mut() {
-            let mut ts = at.turn_state.lock().await;
-            ts.remove_pending_hook(call_id);
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
     pub async fn request_command_approval(
         &self,
         turn_context: &TurnContext,
