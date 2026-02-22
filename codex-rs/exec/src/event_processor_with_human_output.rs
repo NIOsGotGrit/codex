@@ -811,6 +811,9 @@ impl EventProcessor for EventProcessorWithHumanOutput {
             | EventMsg::RealtimeConversationStarted(_)
             | EventMsg::RealtimeConversationRealtime(_)
             | EventMsg::RealtimeConversationClosed(_)
+            | EventMsg::HookPreToolUseRequest(_)
+            | EventMsg::HookPostToolUse(_)
+            | EventMsg::HookPostToolUseFailure(_)
             | EventMsg::DynamicToolCallRequest(_) => {}
         }
         CodexStatus::Running

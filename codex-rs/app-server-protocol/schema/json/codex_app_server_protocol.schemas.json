@@ -2892,6 +2892,123 @@
           "type": "object"
         },
         {
+          "description": "Blocking pre-tool-use hook request.",
+          "properties": {
+            "call_id": {
+              "description": "Identifier that uniquely identifies this hook request.",
+              "type": "string"
+            },
+            "tool_input": {
+              "description": "Tool input payload."
+            },
+            "tool_name": {
+              "description": "Tool name being invoked.",
+              "type": "string"
+            },
+            "turn_id": {
+              "description": "Turn ID that this request belongs to.",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "hook_pre_tool_use_request"
+              ],
+              "title": "HookPreToolUseRequestEventMsgType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "call_id",
+            "tool_input",
+            "tool_name",
+            "turn_id",
+            "type"
+          ],
+          "title": "HookPreToolUseRequestEventMsg",
+          "type": "object"
+        },
+        {
+          "description": "Notification emitted after successful tool execution.",
+          "properties": {
+            "call_id": {
+              "description": "Identifier that uniquely identifies this tool call.",
+              "type": "string"
+            },
+            "tool_input": {
+              "description": "Tool input payload used for execution."
+            },
+            "tool_name": {
+              "description": "Tool name that was invoked.",
+              "type": "string"
+            },
+            "tool_output": {
+              "description": "Tool output payload returned by execution."
+            },
+            "turn_id": {
+              "description": "Turn ID that this notification belongs to.",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "hook_post_tool_use"
+              ],
+              "title": "HookPostToolUseEventMsgType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "call_id",
+            "tool_input",
+            "tool_name",
+            "tool_output",
+            "turn_id",
+            "type"
+          ],
+          "title": "HookPostToolUseEventMsg",
+          "type": "object"
+        },
+        {
+          "description": "Notification emitted after failed tool execution.",
+          "properties": {
+            "call_id": {
+              "description": "Identifier that uniquely identifies this tool call.",
+              "type": "string"
+            },
+            "error": {
+              "description": "Failure message returned by execution.",
+              "type": "string"
+            },
+            "tool_input": {
+              "description": "Tool input payload used for execution."
+            },
+            "tool_name": {
+              "description": "Tool name that was invoked.",
+              "type": "string"
+            },
+            "turn_id": {
+              "description": "Turn ID that this notification belongs to.",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "hook_post_tool_use_failure"
+              ],
+              "title": "HookPostToolUseFailureEventMsgType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "call_id",
+            "error",
+            "tool_input",
+            "tool_name",
+            "turn_id",
+            "type"
+          ],
+          "title": "HookPostToolUseFailureEventMsg",
+          "type": "object"
+        },
+        {
           "description": "Notification advising the user that something they are using has been deprecated and should be phased out.",
           "properties": {
             "details": {
@@ -4609,6 +4726,99 @@
       ],
       "type": "object"
     },
+    "HookPreToolUseDecision": {
+      "oneOf": [
+        {
+          "properties": {
+            "decision": {
+              "enum": [
+                "allow"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "decision"
+          ],
+          "title": "AllowHookPreToolUseDecision",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "decision": {
+              "enum": [
+                "deny"
+              ],
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "decision",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "decision": {
+              "enum": [
+                "modify"
+              ],
+              "type": "string"
+            },
+            "new_input": true
+          },
+          "required": [
+            "decision",
+            "new_input"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "HookPreToolUseParams": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "toolInput": true,
+        "toolName": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "itemId",
+        "threadId",
+        "toolInput",
+        "toolName",
+        "turnId"
+      ],
+      "title": "HookPreToolUseParams",
+      "type": "object"
+    },
+    "HookPreToolUseResponse": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "decision": {
+          "$ref": "#/definitions/HookPreToolUseDecision"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "HookPreToolUseResponse",
+      "type": "object"
+    },
     "InitializeCapabilities": {
       "description": "Client-declared capabilities negotiated during initialize.",
       "properties": {
@@ -5774,6 +5984,46 @@
           "properties": {
             "method": {
               "enum": [
+                "item/hook/postToolUse"
+              ],
+              "title": "Item/hook/postToolUseNotificationMethod",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/definitions/v2/HookPostToolUseNotification"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "title": "Item/hook/postToolUseNotification",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "method": {
+              "enum": [
+                "item/hook/postToolUseFailure"
+              ],
+              "title": "Item/hook/postToolUseFailureNotificationMethod",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/definitions/v2/HookPostToolUseFailureNotification"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "title": "Item/hook/postToolUseFailureNotification",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "method": {
+              "enum": [
                 "item/mcpToolCall/progress"
               ],
               "title": "Item/mcpToolCall/progressNotificationMethod",
@@ -6167,6 +6417,31 @@
             "params"
           ],
           "title": "Item/fileChange/requestApprovalRequest",
+          "type": "object"
+        },
+        {
+          "description": "Sent before executing a specific tool call. Client must return a decision.",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/RequestId"
+            },
+            "method": {
+              "enum": [
+                "item/hook/preToolUse"
+              ],
+              "title": "Item/hook/preToolUseRequestMethod",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/definitions/HookPreToolUseParams"
+            }
+          },
+          "required": [
+            "id",
+            "method",
+            "params"
+          ],
+          "title": "Item/hook/preToolUseRequest",
           "type": "object"
         },
         {
@@ -9042,6 +9317,66 @@
           "personal"
         ],
         "type": "string"
+      },
+      "HookPostToolUseFailureNotification": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "toolInput": true,
+          "toolName": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "itemId",
+          "threadId",
+          "toolInput",
+          "toolName",
+          "turnId"
+        ],
+        "title": "HookPostToolUseFailureNotification",
+        "type": "object"
+      },
+      "HookPostToolUseNotification": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "toolInput": true,
+          "toolName": {
+            "type": "string"
+          },
+          "toolOutput": true,
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "threadId",
+          "toolInput",
+          "toolName",
+          "toolOutput",
+          "turnId"
+        ],
+        "title": "HookPostToolUseNotification",
+        "type": "object"
       },
       "InputModality": {
         "description": "Canonical user-input modality tags advertised by a model.",

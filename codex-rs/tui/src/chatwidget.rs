@@ -4213,6 +4213,9 @@ impl ChatWidget {
             | EventMsg::RealtimeConversationStarted(_)
             | EventMsg::RealtimeConversationRealtime(_)
             | EventMsg::RealtimeConversationClosed(_)
+            | EventMsg::HookPreToolUseRequest(_)
+            | EventMsg::HookPostToolUse(_)
+            | EventMsg::HookPostToolUseFailure(_)
             | EventMsg::DynamicToolCallRequest(_) => {}
             EventMsg::ItemCompleted(event) => {
                 let item = event.item;

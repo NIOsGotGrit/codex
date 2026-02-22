@@ -77,6 +77,11 @@ export type { GetAccountRateLimitsResponse } from "./GetAccountRateLimitsRespons
 export type { GetAccountResponse } from "./GetAccountResponse";
 export type { GitInfo } from "./GitInfo";
 export type { HazelnutScope } from "./HazelnutScope";
+export type { HookPostToolUseFailureNotification } from "./HookPostToolUseFailureNotification";
+export type { HookPostToolUseNotification } from "./HookPostToolUseNotification";
+export type { HookPreToolUseDecision } from "./HookPreToolUseDecision";
+export type { HookPreToolUseParams } from "./HookPreToolUseParams";
+export type { HookPreToolUseResponse } from "./HookPreToolUseResponse";
 export type { ItemCompletedNotification } from "./ItemCompletedNotification";
 export type { ItemStartedNotification } from "./ItemStartedNotification";
 export type { ListMcpServerStatusParams } from "./ListMcpServerStatusParams";
