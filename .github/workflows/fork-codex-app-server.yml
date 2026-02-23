@@ -34,7 +34,7 @@ jobs:
             runner: macos-14
             binary_name: codex-app-server
           - id: macos-x64
-            runner: macos-13
+            runner: macos-15-intel
             binary_name: codex-app-server
           - id: windows-x64
             runner: windows-2022
