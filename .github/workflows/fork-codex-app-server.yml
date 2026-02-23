@@ -17,9 +17,28 @@ permissions:
   contents: write
 
 jobs:
-  build-linux-x64:
-    name: Build codex-app-server (linux x64)
-    runs-on: ubuntu-22.04
+  build:
+    name: Build codex-app-server (${{ matrix.id }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x64
+            runner: ubuntu-22.04
+            binary_name: codex-app-server
+          - id: linux-arm64
+            runner: ubuntu-24.04-arm
+            binary_name: codex-app-server
+          - id: macos-arm64
+            runner: macos-14
+            binary_name: codex-app-server
+          - id: macos-x64
+            runner: macos-13
+            binary_name: codex-app-server
+          - id: windows-x64
+            runner: windows-2022
+            binary_name: codex-app-server.exe
 
     defaults:
       run:
@@ -33,6 +52,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux build dependencies
+        if: startsWith(matrix.id, 'linux-')
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libcap-dev build-essential
@@ -40,38 +60,61 @@ jobs:
       - name: Build release binary
         run: cargo build --release -p codex-app-server
 
-      - name: Package artifact
+      - name: Package artifact (unix)
+        if: matrix.id != 'windows-x64'
         run: |
           mkdir -p dist
-          cp target/release/codex-app-server dist/codex-app-server-linux-x64
-          chmod +x dist/codex-app-server-linux-x64
-          sha256sum dist/codex-app-server-linux-x64 > dist/codex-app-server-linux-x64.sha256
+          cp target/release/${{ matrix.binary_name }} dist/codex-app-server-${{ matrix.id }}
+          chmod +x dist/codex-app-server-${{ matrix.id }}
+          shasum -a 256 dist/codex-app-server-${{ matrix.id }} > dist/codex-app-server-${{ matrix.id }}.sha256
+
+      - name: Package artifact (windows)
+        if: matrix.id == 'windows-x64'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item "target/release/${{ matrix.binary_name }}" "dist/codex-app-server-${{ matrix.id }}.exe"
+          $hash = (Get-FileHash "dist/codex-app-server-${{ matrix.id }}.exe" -Algorithm SHA256).Hash.ToLower()
+          "$hash  codex-app-server-${{ matrix.id }}.exe" | Out-File -FilePath "dist/codex-app-server-${{ matrix.id }}.sha256" -Encoding ascii
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: codex-app-server-linux-x64
+          name: codex-app-server-${{ matrix.id }}
           path: |
-            codex-rs/dist/codex-app-server-linux-x64
-            codex-rs/dist/codex-app-server-linux-x64.sha256
+            codex-rs/dist/codex-app-server-${{ matrix.id }}*
           if-no-files-found: error
           retention-days: 14
 
+  release:
+    name: Publish release
+    runs-on: ubuntu-22.04
+    needs: build
+    if: ${{ inputs.publish_release }}
+    steps:
       - name: Validate release inputs
-        if: ${{ inputs.publish_release }}
         run: |
           if [[ -z "${{ inputs.release_tag }}" ]]; then
             echo "release_tag is required when publish_release=true"
             exit 1
           fi
 
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten artifact layout
+        run: |
+          mkdir -p release-assets
+          find dist -type f -maxdepth 2 -exec cp {} release-assets/ \;
+          ls -lah release-assets
+
       - name: Publish GitHub Release
-        if: ${{ inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag }}
           name: ${{ inputs.release_tag }}
           files: |
-            codex-rs/dist/codex-app-server-linux-x64
-            codex-rs/dist/codex-app-server-linux-x64.sha256
+            release-assets/*
           generate_release_notes: true
