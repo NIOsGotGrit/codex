@@ -23,6 +23,7 @@ use crate::tools::router::ToolCall;
 use crate::tools::router::ToolRouter;
 use codex_protocol::models::FunctionCallOutputBody;
 use codex_protocol::models::FunctionCallOutputPayload;
+use codex_protocol::models::PermissionProfile;
 use codex_protocol::models::ResponseInputItem;
 use codex_protocol::models::SandboxPermissions;
 use serde::Deserialize;
@@ -378,6 +379,7 @@ impl From<&ToolPayload> for HookToolInputPayload {
                     workdir: params.workdir.clone(),
                     timeout_ms: params.timeout_ms,
                     sandbox_permissions: params.sandbox_permissions,
+                    additional_permissions: params.additional_permissions.clone(),
                     prefix_rule: params.prefix_rule.clone(),
                     justification: params.justification.clone(),
                 },
@@ -406,6 +408,7 @@ impl From<HookToolInputPayload> for ToolPayload {
                     workdir: params.workdir,
                     timeout_ms: params.timeout_ms,
                     sandbox_permissions: params.sandbox_permissions,
+                    additional_permissions: params.additional_permissions,
                     prefix_rule: params.prefix_rule,
                     justification: params.justification,
                 },
@@ -429,6 +432,7 @@ struct HookToolInputLocalShell {
     workdir: Option<String>,
     timeout_ms: Option<u64>,
     sandbox_permissions: Option<SandboxPermissions>,
+    additional_permissions: Option<PermissionProfile>,
     prefix_rule: Option<Vec<String>>,
     justification: Option<String>,
 }

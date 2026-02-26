@@ -857,8 +857,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
             | EventMsg::SkillRequestApproval(_)
             | EventMsg::HookPreToolUseRequest(_)
             | EventMsg::HookPostToolUse(_)
-            | EventMsg::HookPostToolUseFailure(_)
-            => {}
+            | EventMsg::HookPostToolUseFailure(_) => {}
         }
         CodexStatus::Running
     }
